@@ -1,26 +1,103 @@
-import { useState } from 'react'
+import { useState, useEffect } from "react";
 
 function Users() {
-  const [users, setUsers] = useState([
-    { id: 1, name: 'John Doe', email: 'john@example.com', phone: '1234567890', role: 'Team Leader' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '0987654321', role: 'Telecaller' }
-  ])
-  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'Telecaller' })
+  const [users, setUsers] = useState([]);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role_id: 1,
+  });
 
-  const handleAddUser = (e) => {
-    e.preventDefault()
-    setUsers([...users, { ...newUser, id: users.length + 1 }])
-    setNewUser({ name: '', email: '', phone: '', role: 'Telecaller' })
-  }
+  // Get token from localStorage
+  const Authorization = localStorage.getItem("token");
+  const token = Authorization ? ` ${Authorization}` : null;
 
-  const handleDeleteUser = (id) => {
-    setUsers(users.filter(user => user.id !== id))
-  }
+  // Fetch users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!token) {
+        console.error("No token found. Redirecting to login...");
+        window.location.href = "/login";
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:5000/api/users", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setUsers(data);
+        } else {
+          console.error("Error fetching users:", data.message);
+        }
+      } catch (error) {
+        console.error("⚠️ Network error fetching users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, [token]);
+
+  // Add user
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch("http://localhost:5000/api/users/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+        body: JSON.stringify(newUser),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message);
+      }
+
+      setUsers([...users, result.user]);
+      setNewUser({ name: "", email: "", phone: "", role_id:1 });
+    } catch (error) {
+      console.error("⚠️ Error adding user:", error.message);
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async (id) => {
+    if (!token) {
+      console.error("Authorization token missing.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/users/delete/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: token },
+      });
+
+      if (!response.ok) throw new Error("Failed to delete user");
+
+      setUsers(users.filter((user) => user.id !== id));
+    } catch (error) {
+      console.error("⚠️ Error deleting user:", error);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">User Management</h1>
-      
+
       <div className="card">
         <h2 className="text-xl font-semibold mb-4">Add New User</h2>
         <form onSubmit={handleAddUser} className="space-y-4">
@@ -34,7 +111,7 @@ function Users() {
               onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
@@ -45,7 +122,7 @@ function Users() {
               onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Phone</label>
             <input
@@ -56,52 +133,45 @@ function Users() {
               onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Role</label>
             <select
               className="input-field"
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+              value={newUser.role_id}
+              onChange={(e) => setNewUser({ ...newUser, role_id: e.target.value })}
             >
-              <option value="Team Leader">Team Leader</option>
-              <option value="Telecaller">Telecaller</option>
+              <option value="2">Team Leader</option>
+              <option value="1">Telecaller</option>
             </select>
           </div>
-          
-          <button type="submit" className="btn-primary">
-            Add User
-          </button>
+
+          <button type="submit" className="btn-primary">Add User</button>
         </form>
       </div>
-      
+
       <div className="card">
         <h2 className="text-xl font-semibold mb-4">User List</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map(user => (
+              {users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.phone}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{user.role}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                  <td className="px-6 py-4">{user.name}</td>
+                  <td className="px-6 py-4">{user.email}</td>
+                  <td className="px-6 py-4">{user.phone}</td>
+                  <td className="px-6 py-4">{user.role_id}</td>
+                  <td className="px-6 py-4">
+                    <button onClick={() => handleDeleteUser(user.id)} className="text-red-600">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -110,7 +180,7 @@ function Users() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default Users
+export default Users;
