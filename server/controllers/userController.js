@@ -1,19 +1,22 @@
+const pool = require('../config/db.js'); 
+
+
+
 exports.addUser = async (req, res) => {
-    const { name, email, phone, password, role } = req.body;
+    const { name, email, phone, role_id } = req.body;
     
-    if (!name || !email || !phone || !password) {
+    if (!name || !email || !phone || !role_id) {
         return res.status(400).json({ message: "Missing required fields" });
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
-        // Correct SQL with all required fields
-        await db.query(
-            "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)", 
-            [name, email, phone, hashedPassword, role || 'user']
-        );
-        
+        // Updated query with dynamic fields from req.body
+        const query = "INSERT INTO users (name, email, phone, role_id) VALUES (?, ?, ?, ?)";
+        const values = [name, email, phone, role_id || 'user'];
+
+        // Using the pool to query the database
+        await pool.execute(query, values);
+
         res.status(201).json({ message: "User added successfully" });
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {

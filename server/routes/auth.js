@@ -1,23 +1,24 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
+
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 
 const router = express.Router();
 
 // Admin Login
+// Admin Login
 router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+        const [user] = await db.query("SELECT * FROM admin WHERE email = ?", [email]);
 
         if (user.length === 0) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
-        const validPassword = await bcrypt.compare(password, user[0].password);
-        if (!validPassword) {
+        // Directly compare the passwords (not recommended for production)
+        if (password !== user[0].password) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
@@ -29,5 +30,6 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+
 
 module.exports = router;
